@@ -2,6 +2,7 @@ package mousemover
 
 import (
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,6 +12,42 @@ import (
 	"github.com/prashantgupta24/activity-tracker/pkg/activity"
 	"github.com/prashantgupta24/activity-tracker/pkg/tracker"
 )
+
+// fakeController is a test double for mouseController. It is safe for concurrent
+// use because performAction runs in its own goroutine while the test asserts.
+type fakeController struct {
+	mu      sync.Mutex
+	x, y    int
+	canMove bool //when false, move() is a no-op, simulating a blocked input pipeline
+	clicks  int
+}
+
+func (f *fakeController) getPos() (int, int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.x, f.y
+}
+
+func (f *fakeController) move(x, y int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.canMove {
+		f.x, f.y = x, y
+	}
+}
+
+func (f *fakeController) click(button string) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.clicks++
+	return true
+}
+
+func (f *fakeController) clickCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.clicks
+}
 
 type TestMover struct {
 	suite.Suite
@@ -39,6 +76,7 @@ func (suite *TestMover) SetupSuite() {
 func (suite *TestMover) SetupTest() {
 	instance = nil
 }
+
 func (suite *TestMover) TestAppStart() {
 	t := suite.T()
 	mouseMover := GetInstance()
@@ -46,6 +84,7 @@ func (suite *TestMover) TestAppStart() {
 	time.Sleep(time.Millisecond * 500) //wait for app to start
 	assert.True(t, mouseMover.state.isRunning(), "app should have started")
 }
+
 func (suite *TestMover) TestSingleton() {
 	t := suite.T()
 
@@ -69,16 +108,15 @@ func (suite *TestMover) TestLogFile() {
 	assert.FileExists(t, filePath, "log file should exist")
 	os.RemoveAll(filePath)
 }
+
 func (suite *TestMover) TestSystemSleepAndWake() {
 	t := suite.T()
 	mouseMover := GetInstance()
 
-	state := &state{
-		override: &override{
-			valueToReturn: true,
-		},
-	}
-	mouseMover.state = state
+	mouseMover.state = &state{}
+	mouseMover.config = DefaultConfig()
+	mouseMover.controller = &fakeController{canMove: true}
+	state := mouseMover.state
 	heartbeatCh := make(chan *tracker.Heartbeat)
 
 	mouseMover.run(heartbeatCh, suite.activityTracker)
@@ -125,12 +163,10 @@ func (suite *TestMover) TestMouseMoveSuccess() {
 	t := suite.T()
 	mouseMover := GetInstance()
 
-	state := &state{
-		override: &override{
-			valueToReturn: true,
-		},
-	}
-	mouseMover.state = state
+	mouseMover.state = &state{}
+	mouseMover.config = DefaultConfig()
+	mouseMover.controller = &fakeController{canMove: true}
+	state := mouseMover.state
 	heartbeatCh := make(chan *tracker.Heartbeat)
 
 	mouseMover.run(heartbeatCh, suite.activityTracker)
@@ -152,12 +188,10 @@ func (suite *TestMover) TestMouseMoveFailure() {
 	t := suite.T()
 	mouseMover := GetInstance()
 
-	state := &state{
-		override: &override{
-			valueToReturn: false,
-		},
-	}
-	mouseMover.state = state
+	mouseMover.state = &state{}
+	mouseMover.config = DefaultConfig()
+	mouseMover.controller = &fakeController{canMove: false}
+	state := mouseMover.state
 	heartbeatCh := make(chan *tracker.Heartbeat)
 
 	mouseMover.run(heartbeatCh, suite.activityTracker)
@@ -175,5 +209,69 @@ func (suite *TestMover) TestMouseMoveFailure() {
 	time.Sleep(time.Millisecond * 500) //wait for it to be registered
 	assert.True(t, time.Time.IsZero(state.getLastMouseMovedTime()), "should be default but is ", state.getLastMouseMovedTime())
 	assert.NotEqual(t, state.getDidNotMoveCount(), 0, "should not be 0")
-	assert.NotEqual(t, state.getLastErrorTime(), 0, "should not be 0")
+}
+
+// TestStableClickSucceeds verifies the click is issued exactly once when the
+// input pipeline is working - the click's own verification step passes.
+func (suite *TestMover) TestStableClickSucceeds() {
+	t := suite.T()
+	c := &fakeController{canMove: true}
+
+	ok := stableClick(c, "left", 3)
+
+	assert.True(t, ok, "click should succeed when the input pipeline works")
+	assert.Equal(t, 1, c.clickCount(), "exactly one click should be issued")
+}
+
+// TestStableClickFailsWhenInputBlocked verifies that when the OS is not
+// accepting synthetic input, the separate verification step fails and NO click
+// is issued (so we never report a click that could not have landed).
+func (suite *TestMover) TestStableClickFailsWhenInputBlocked() {
+	t := suite.T()
+	c := &fakeController{canMove: false}
+
+	ok := stableClick(c, "left", 3)
+
+	assert.False(t, ok, "click should fail when input is not accepted")
+	assert.Equal(t, 0, c.clickCount(), "no click should be issued if verification fails")
+}
+
+// TestPerformActionWithClick verifies the full move+click path when clicking is
+// enabled: the pointer moves and exactly one verified click is issued.
+func (suite *TestMover) TestPerformActionWithClick() {
+	t := suite.T()
+	c := &fakeController{canMove: true}
+	mouseMover := &MouseMover{
+		state:      &state{},
+		controller: c,
+		config: Config{
+			MovePixels:    10,
+			ClickEnabled:  true,
+			ClickButton:   "left",
+			MoveAttempts:  3,
+			ClickAttempts: 3,
+		},
+	}
+
+	ok := mouseMover.performAction(10)
+
+	assert.True(t, ok, "move+click should succeed")
+	assert.Equal(t, 1, c.clickCount(), "exactly one click should be issued")
+}
+
+// TestPerformActionMoveOnly verifies that with clicking disabled a successful
+// move is enough and no click is issued.
+func (suite *TestMover) TestPerformActionMoveOnly() {
+	t := suite.T()
+	c := &fakeController{canMove: true}
+	mouseMover := &MouseMover{
+		state:      &state{},
+		controller: c,
+		config:     DefaultConfig(),
+	}
+
+	ok := mouseMover.performAction(10)
+
+	assert.True(t, ok, "move-only action should succeed")
+	assert.Equal(t, 0, c.clickCount(), "no click should be issued when disabled")
 }

@@ -95,6 +95,36 @@ Every 60 seconds, AMM uses [Activity tracker](https://github.com/prashantgupta24
 
 > All code is public and open-sourced so no worrying if there's nefarious intention involved in recording your activity or not.
 
+## Configuration
+
+AMM works out of the box with sensible defaults, but you can tune its behaviour by editing `settings.json` (created automatically on first run at `~/Library/Application Support/amm/settings.json`). Unknown or omitted fields fall back to their defaults.
+
+| Field          | Type   | Default  | Meaning                                                                                 |
+| -------------- | ------ | -------- | --------------------------------------------------------------------------------------- |
+| `icon`         | string | `mouse`  | Tray icon: `mouse`, `cloud`, `man` or `geometric` (also settable from the menu).        |
+| `idleSeconds`  | int    | `60`     | How long the machine must be idle before the pointer is nudged.                         |
+| `movePixels`   | int    | `10`     | Distance in pixels the pointer is moved each time.                                      |
+| `clickEnabled` | bool   | `false`  | When `true`, a mouse click is issued after each move (see the note below).              |
+| `clickButton`  | string | `left`   | Button used when `clickEnabled` is `true`: `left`, `right` or `center`.                 |
+
+Example that nudges the mouse after 30s of idle and also clicks:
+
+```json
+{
+  "icon": "mouse",
+  "idleSeconds": 30,
+  "movePixels": 8,
+  "clickEnabled": true,
+  "clickButton": "left"
+}
+```
+
+### About the click
+
+The click is **reliable by design**: before every click AMM runs a separate verification step that confirms the OS is actually accepting its synthetic input (the same permission gate that governs mouse movement). It only reports success when a click was issued against a verified-working input pipeline, and it retries the whole sequence a few times to ride out transient failures.
+
+> ⚠️ A synthetic click acts on whatever is under the cursor, so it can trigger UI (buttons, links, etc.). That's why `clickEnabled` is **off by default** — turn it on only if a plain move isn't enough to keep you marked "active".
+
 [version-badge]: https://img.shields.io/github/release/prashantgupta24/automatic-mouse-mover.svg
 [releases]: https://github.com/prashantgupta24/automatic-mouse-mover/releases
 [godoc-badge]: https://img.shields.io/badge/godoc-reference-blue.svg

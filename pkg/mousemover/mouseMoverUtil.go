@@ -4,7 +4,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/go-vgo/robotgo"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
@@ -37,26 +36,6 @@ func getLogger(m *MouseMover, doWriteToFile bool, filename string) *log.Logger {
 	return logger
 }
 
-func moveAndCheck(state *state, movePixel int, mouseMoveSuccessCh chan bool) {
-	if state.override != nil { //we don't want to move mouse for tests
-		mouseMoveSuccessCh <- state.override.valueToReturn
-		return
-	}
-	currentX, currentY := robotgo.GetMousePos()
-	moveToX := currentX + movePixel
-	moveToY := currentY + movePixel
-	robotgo.Move(moveToX, moveToY)
-
-	//check if mouse moved. Sometimes mac users need to give
-	//extra permission for controlling the mouse
-	movedX, movedY := robotgo.GetMousePos()
-	if movedX == currentX && movedY == currentY {
-		mouseMoveSuccessCh <- false
-	} else {
-		mouseMoveSuccessCh <- true
-	}
-}
-
 // getters and setters for state variable
 func (s *state) isRunning() bool {
 	s.mutex.RLock()
@@ -68,6 +47,18 @@ func (s *state) updateRunningStatus(isRunning bool) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.isAppRunning = isRunning
+}
+
+// stopIfRunning atomically clears the running flag, returning true only if the
+// app was running. This makes Quit safe to call multiple times / concurrently.
+func (s *state) stopIfRunning() bool {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	if !s.isAppRunning {
+		return false
+	}
+	s.isAppRunning = false
+	return true
 }
 
 func (s *state) isSystemSleeping() bool {

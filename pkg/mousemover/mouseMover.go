@@ -2,6 +2,7 @@ package mousemover
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-vgo/robotgo"
@@ -9,27 +10,36 @@ import (
 	"github.com/prashantgupta24/activity-tracker/pkg/tracker"
 )
 
-var instance *MouseMover
-
-const (
-	timeout     = 100 //ms
-	logDir      = "log"
-	logFileName = "logFile-amm-5"
+var (
+	instance      *MouseMover
+	instanceMutex sync.Mutex
 )
 
-// Start the main app
-func (m *MouseMover) Start() {
+const (
+	//actionTimeout guards against robotgo hanging. It must comfortably exceed the
+	//worst-case retry budget of a move+click sequence.
+	actionTimeout = 2 * time.Second
+	logDir        = "log"
+	logFileName   = "logFile-amm-5"
+)
+
+// Start the main app with the given configuration. Zero/invalid config fields
+// fall back to sensible defaults (see Config.normalize).
+func (m *MouseMover) Start(cfg Config) {
 	if m.state.isRunning() {
 		return
 	}
 	m.state = &state{}
 	m.quit = make(chan struct{})
+	m.config = cfg.normalize()
+	if m.controller == nil {
+		m.controller = robotgoController{}
+	}
 
-	heartbeatInterval := 60 //value always in seconds
 	workerInterval := 10
 
 	activityTracker := &tracker.Instance{
-		HeartbeatInterval: heartbeatInterval,
+		HeartbeatInterval: m.config.IdleSeconds, //value always in seconds
 		WorkerInterval:    workerInterval,
 		// LogLevel:          "debug", //if we want verbose logging
 	}
@@ -44,10 +54,13 @@ func (m *MouseMover) run(heartbeatCh chan *tracker.Heartbeat, activityTracker *t
 		if state != nil && state.isRunning() {
 			return
 		}
+		//capture the quit channel this run was started with, so a later
+		//Start()/Quit() that swaps m.quit cannot leave this goroutine orphaned.
+		quit := m.quit
 		state.updateRunningStatus(true)
 
 		logger := getLogger(m, false, logFileName) //set writeToFile=true only for debugging
-		movePixel := 10
+		movePixel := m.config.MovePixels
 		for {
 			select {
 			case heartbeat := <-heartbeatCh:
@@ -56,8 +69,11 @@ func (m *MouseMover) run(heartbeatCh chan *tracker.Heartbeat, activityTracker *t
 						logger.Infof("system sleeping")
 						continue
 					}
-					mouseMoveSuccessCh := make(chan bool)
-					go moveAndCheck(state, movePixel, mouseMoveSuccessCh)
+					//buffered so performAction never blocks on send if we time out below
+					mouseMoveSuccessCh := make(chan bool, 1)
+					go func(pixel int) {
+						mouseMoveSuccessCh <- m.performAction(pixel)
+					}(movePixel)
 					select {
 					case wasMouseMoveSuccess := <-mouseMoveSuccessCh:
 						if wasMouseMoveSuccess {
@@ -68,19 +84,22 @@ func (m *MouseMover) run(heartbeatCh chan *tracker.Heartbeat, activityTracker *t
 						} else {
 							didNotMoveCount := state.getDidNotMoveCount()
 							state.updateDidNotMoveCount(didNotMoveCount + 1)
-							state.updateLastErrorTime(time.Now())
+							lastErrorTime := state.getLastErrorTime()
 							msg := fmt.Sprintf("Mouse pointer cannot be moved at %v. Last moved at %v. Happened %v times. (Only notifies once every 24 hours.) See README for details.",
 								time.Now(), state.getLastMouseMovedTime(), state.getDidNotMoveCount())
-							logger.Errorf(msg)
-							if state.getDidNotMoveCount() >= 10 && (time.Since(state.lastErrorTime).Hours() > 24) { //show only 1 error in a 24 hour window
+							logger.Error(msg)
+							//show only 1 error in a 24 hour window. lastErrorTime holds the time
+							//of the last notification, so compare against it *before* updating it.
+							if state.getDidNotMoveCount() >= 10 && (lastErrorTime.IsZero() || time.Since(lastErrorTime).Hours() > 24) {
+								state.updateLastErrorTime(time.Now())
 								go func() {
 									robotgo.Alert("Error with Automatic Mouse Mover", msg)
 								}()
 							}
 						}
-					case <-time.After(timeout * time.Millisecond):
+					case <-time.After(actionTimeout):
 						//timeout, do nothing
-						logger.Errorf("timeout happened after %vms while trying to move mouse", timeout)
+						logger.Errorf("timeout happened after %v while trying to move mouse", actionTimeout)
 					}
 				} else {
 					logger.Infof("activity detected in the last %v seconds.", int(activityTracker.HeartbeatInterval))
@@ -97,7 +116,7 @@ func (m *MouseMover) run(heartbeatCh chan *tracker.Heartbeat, activityTracker *t
 					}
 					logger.Infof("\n\n\n")
 				}
-			case <-m.quit:
+			case <-quit:
 				logger.Infof("stopping mouse mover")
 				state.updateRunningStatus(false)
 				activityTracker.Quit()
@@ -109,9 +128,10 @@ func (m *MouseMover) run(heartbeatCh chan *tracker.Heartbeat, activityTracker *t
 
 // Quit the app
 func (m *MouseMover) Quit() {
-	//making it idempotent
-	if m != nil && m.state.isRunning() {
-		m.quit <- struct{}{}
+	//stopIfRunning atomically clears the running flag and reports whether we were
+	//running, so concurrent/duplicate Quit calls close the channel at most once.
+	if m != nil && m.state.stopIfRunning() {
+		close(m.quit)
 	}
 	if m.logFile != nil {
 		m.logFile.Close()
@@ -120,9 +140,13 @@ func (m *MouseMover) Quit() {
 
 // GetInstance gets the singleton instance for mouse mover app
 func GetInstance() *MouseMover {
+	instanceMutex.Lock()
+	defer instanceMutex.Unlock()
 	if instance == nil {
 		instance = &MouseMover{
-			state: &state{},
+			state:      &state{},
+			config:     DefaultConfig(),
+			controller: robotgoController{},
 		}
 	}
 	return instance

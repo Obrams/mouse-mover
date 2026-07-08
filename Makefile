@@ -1,5 +1,6 @@
 COVER_PROFILE=cover.out
 COVER_HTML=cover.html
+VERSION ?= $(shell git describe --tags --always 2>/dev/null || echo dev)
 
 .PHONY: $(COVER_PROFILE) $(COVER_HTML)
 
@@ -10,7 +11,7 @@ build: clean
 	mkdir -p -v ./bin/amm.app/Contents/MacOS
 	cp ./appInfo/*.plist ./bin/amm.app/Contents/Info.plist
 	cp ./appInfo/*.icns ./bin/amm.app/Contents/Resources/icon.icns
-	go build -o ./bin/amm.app/Contents/MacOS/amm cmd/main.go
+	go build -ldflags "-X main.version=$(VERSION)" -o ./bin/amm.app/Contents/MacOS/amm cmd/main.go
 
 open: build
 	open ./bin
@@ -32,10 +33,10 @@ $(COVER_PROFILE):
 	go test -v -failfast -race -coverprofile=$(COVER_PROFILE) ./...
 
 vet:
-	go vet $(shell glide nv)
+	go vet ./...
 
 lint:
-	go list ./... | grep -v vendor | grep -v /assets/ |xargs -L1 golint -set_exit_status
+	golangci-lint run ./...
 
 .PHONY: build 
 .PHONY: clean
