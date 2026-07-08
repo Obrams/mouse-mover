@@ -289,3 +289,18 @@ func (suite *TestMover) TestPerformActionMoveOnly() {
 	assert.True(t, ok, "move-only action should succeed")
 	assert.Equal(t, 0, c.clickCount(), "no click should be issued when disabled")
 }
+
+// TestRealClickConfirmation exercises the REAL OS event-tap confirmation path
+// against hardware. It is skipped unless MM_REAL_CLICK=1, because it performs an
+// actual mouse click and needs the Accessibility permission. Run it from a
+// terminal that has Accessibility granted, with the cursor over an empty area:
+//
+//	MM_REAL_CLICK=1 go test -run TestRealClickConfirmation -v ./pkg/mousemover/
+func TestRealClickConfirmation(t *testing.T) {
+	if os.Getenv("MM_REAL_CLICK") == "" {
+		t.Skip("set MM_REAL_CLICK=1 to run the real click confirmation (performs an actual click)")
+	}
+	confirmed := robotgoController{}.clickConfirmed("left")
+	t.Logf("real click confirmed by OS event tap: %v", confirmed)
+	assert.True(t, confirmed, "the OS event tap should have observed the synthetic click")
+}
