@@ -1,13 +1,7 @@
 
-## Stable build. Might not be willing to add anything new unless something breaks with macOS versions.
+# Automatic-Mouse-Mover (AMM)
 
-I would like to keep this app as simple as possible. Hence I will not be adding more functionality to it. Thanks for everyone who contributed in making it awesome!
-
-If you would like new features, feel free to check out: https://github.com/Resousse/automatic-mouse-mover
-
-# Presenting the minimalistic Automatic-Mouse-Mover(AMM) app!
-
-[![version][version-badge]][releases] [![Go Report Card](https://goreportcard.com/badge/github.com/prashantgupta24/automatic-mouse-mover)](https://goreportcard.com/report/github.com/prashantgupta24/automatic-mouse-mover) [![godoc-badge][godoc-badge]][godoc-link] [![codecov](https://codecov.io/gh/prashantgupta24/automatic-mouse-mover/branch/master/graph/badge.svg)](https://codecov.io/gh/prashantgupta24/automatic-mouse-mover)
+> Personal standalone build based on [prashantgupta24/automatic-mouse-mover](https://github.com/prashantgupta24/automatic-mouse-mover) (MIT). This copy adds reliability fixes, configurable behaviour via `settings.json`, an optional verified stable click, and updated dependencies so it builds on recent macOS. Maintained independently for local use.
 
 Ever felt the need to keep your machine awake without actually having to move the mouse pointer manually at regular intervals? **Well, not anymore!**
 
@@ -55,13 +49,13 @@ Since this app actively keeps your machine awake, your messaging app will never 
 
 You just click on `Start`, and AMM will take care of moving your mouse whenever it feels that the system has been left idle for a minute. It's as simple as this.
 
-![](https://github.com/prashantgupta24/automatic-mouse-mover/blob/master/resources/amm-demo.gif)
+![](https://github.com/Obrams/mouse-mover/blob/master/resources/amm-demo.gif)
 
 ## How to install
 
 ### Install from binary
 
-1. Download the latest `amm.app.zip` from the [releases](https://github.com/prashantgupta24/automatic-mouse-mover/releases) page, unzip it, and copy the .app to your `Applications` folder like any other application.
+1. Download the latest `amm.app.zip` from the [releases](https://github.com/Obrams/mouse-mover/releases) page, unzip it, and copy the .app to your `Applications` folder like any other application.
 
 1. Since the application is not notarized, you will need to right click on the .app and choose Open.
 
@@ -79,7 +73,7 @@ Double click on the app, and the cute `mouse` should appear on your taskbar on t
 
 While starting the app, you might see a message like the one below or an error stating `Mouse pointer cannot be moved`.
 
-![](https://github.com/prashantgupta24/automatic-mouse-mover/blob/master/resources/request.jpg)
+![](https://github.com/Obrams/mouse-mover/blob/master/resources/request.jpg)
 
 Don't worry, it's nothing sinister, it's just that Mac doesn't allow apps to gain accessibility to the computer by default (even standard apps like Automator, Firefox etc. who might want to access some features need to go through the same process).
 
@@ -124,8 +118,3 @@ Example that nudges the mouse after 30s of idle and also clicks:
 The click is **reliable by design**: before every click AMM runs a separate verification step that confirms the OS is actually accepting its synthetic input (the same permission gate that governs mouse movement). It only reports success when a click was issued against a verified-working input pipeline, and it retries the whole sequence a few times to ride out transient failures.
 
 > ⚠️ A synthetic click acts on whatever is under the cursor, so it can trigger UI (buttons, links, etc.). That's why `clickEnabled` is **off by default** — turn it on only if a plain move isn't enough to keep you marked "active".
-
-[version-badge]: https://img.shields.io/github/release/prashantgupta24/automatic-mouse-mover.svg
-[releases]: https://github.com/prashantgupta24/automatic-mouse-mover/releases
-[godoc-badge]: https://img.shields.io/badge/godoc-reference-blue.svg
-[godoc-link]: https://godoc.org/github.com/prashantgupta24/automatic-mouse-mover/pkg/mousemover

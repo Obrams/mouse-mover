@@ -8,8 +8,8 @@ import (
 	"github.com/getlantern/systray"
 	"github.com/go-vgo/robotgo"
 	"github.com/kirsle/configdir"
-	"github.com/prashantgupta24/automatic-mouse-mover/assets/icon"
-	"github.com/prashantgupta24/automatic-mouse-mover/pkg/mousemover"
+	"github.com/Obrams/mouse-mover/assets/icon"
+	"github.com/Obrams/mouse-mover/pkg/mousemover"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -163,7 +163,7 @@ func onReady() {
 				chooseIcon("geometric")
 			case <-about.ClickedCh:
 				log.Infof("Requesting about")
-				robotgo.Alert("Automatic-mouse-mover app v"+version, "Developed by Prashant Gupta. \n\nMore info at: https://github.com/prashantgupta24/automatic-mouse-mover", "OK", "")
+				robotgo.Alert("Automatic-mouse-mover app v"+version, "Originally developed by Prashant Gupta. \n\nMore info at: https://github.com/Obrams/mouse-mover", "OK", "")
 			}
 		}
 	}()
