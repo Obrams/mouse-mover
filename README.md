@@ -115,6 +115,15 @@ Example that nudges the mouse after 30s of idle and also clicks:
 
 ### About the click
 
-The click is **reliable by design**: before every click MM runs a separate verification step that confirms the OS is actually accepting its synthetic input (the same permission gate that governs mouse movement). It only reports success when a click was issued against a verified-working input pipeline, and it retries the whole sequence a few times to ride out transient failures.
+The click is **confirmed, not just fired**. For every click MM:
+
+1. runs a quick pre-check that the OS is accepting synthetic input (nudges the pointer 1px and back);
+2. installs a system-level mouse **event tap** ([`gohook`](https://github.com/robotn/gohook));
+3. synthesises the click;
+4. waits for that same event tap to **observe the click event coming back** from the OS.
+
+Only if the OS event stream actually reports the click does MM count it as a success — otherwise it retries. This is genuine proof the click entered the OS event stream, rather than trusting an API call that could have been silently dropped (e.g. missing permission).
+
+> Note: this confirms the click **reached the OS** (the event really happened), not *which* on-screen element handled it — that would require app-specific UI knowledge. Both the event tap and click synthesis need the Accessibility permission.
 
 > ⚠️ A synthetic click acts on whatever is under the cursor, so it can trigger UI (buttons, links, etc.). That's why `clickEnabled` is **off by default** — turn it on only if a plain move isn't enough to keep you marked "active".

@@ -19,6 +19,7 @@ type fakeController struct {
 	mu      sync.Mutex
 	x, y    int
 	canMove bool //when false, move() is a no-op, simulating a blocked input pipeline
+	confirm bool //value returned by clickConfirmed (did the OS "observe" the click)
 	clicks  int
 }
 
@@ -36,11 +37,11 @@ func (f *fakeController) move(x, y int) {
 	}
 }
 
-func (f *fakeController) click(button string) bool {
+func (f *fakeController) clickConfirmed(button string) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.clicks++
-	return true
+	return f.confirm
 }
 
 func (f *fakeController) clickCount() int {
@@ -212,20 +213,20 @@ func (suite *TestMover) TestMouseMoveFailure() {
 }
 
 // TestStableClickSucceeds verifies the click is issued exactly once when the
-// input pipeline is working - the click's own verification step passes.
+// input pipeline works and the OS confirms the click.
 func (suite *TestMover) TestStableClickSucceeds() {
 	t := suite.T()
-	c := &fakeController{canMove: true}
+	c := &fakeController{canMove: true, confirm: true}
 
 	ok := stableClick(c, "left", 3)
 
-	assert.True(t, ok, "click should succeed when the input pipeline works")
+	assert.True(t, ok, "click should succeed when it is confirmed by the OS")
 	assert.Equal(t, 1, c.clickCount(), "exactly one click should be issued")
 }
 
 // TestStableClickFailsWhenInputBlocked verifies that when the OS is not
-// accepting synthetic input, the separate verification step fails and NO click
-// is issued (so we never report a click that could not have landed).
+// accepting synthetic input, the pre-check fails and NO click is issued
+// (so we never report a click that could not have landed).
 func (suite *TestMover) TestStableClickFailsWhenInputBlocked() {
 	t := suite.T()
 	c := &fakeController{canMove: false}
@@ -233,14 +234,27 @@ func (suite *TestMover) TestStableClickFailsWhenInputBlocked() {
 	ok := stableClick(c, "left", 3)
 
 	assert.False(t, ok, "click should fail when input is not accepted")
-	assert.Equal(t, 0, c.clickCount(), "no click should be issued if verification fails")
+	assert.Equal(t, 0, c.clickCount(), "no click should be issued if the pre-check fails")
+}
+
+// TestStableClickFailsWhenNotConfirmed verifies that when the click is posted
+// but the OS never reports it back, stableClick retries every attempt and then
+// fails - it never claims success for an unconfirmed click.
+func (suite *TestMover) TestStableClickFailsWhenNotConfirmed() {
+	t := suite.T()
+	c := &fakeController{canMove: true, confirm: false}
+
+	ok := stableClick(c, "left", 3)
+
+	assert.False(t, ok, "click must fail when the OS does not confirm it")
+	assert.Equal(t, 3, c.clickCount(), "every attempt should have tried to click")
 }
 
 // TestPerformActionWithClick verifies the full move+click path when clicking is
-// enabled: the pointer moves and exactly one verified click is issued.
+// enabled: the pointer moves and exactly one confirmed click is issued.
 func (suite *TestMover) TestPerformActionWithClick() {
 	t := suite.T()
-	c := &fakeController{canMove: true}
+	c := &fakeController{canMove: true, confirm: true}
 	mouseMover := &MouseMover{
 		state:      &state{},
 		controller: c,

@@ -16,9 +16,10 @@ var (
 )
 
 const (
-	//actionTimeout guards against robotgo hanging. It must comfortably exceed the
-	//worst-case retry budget of a move+click sequence.
-	actionTimeout = 2 * time.Second
+	//actionTimeout guards against robotgo/gohook hanging. It must comfortably
+	//exceed the worst-case retry budget of a move + confirmed-click sequence
+	//(each click attempt costs hookInitDelay + clickConfirmTimeout).
+	actionTimeout = 5 * time.Second
 	logDir        = "log"
 	logFileName   = "logFile-mm-5"
 )
