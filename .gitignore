@@ -5,3 +5,6 @@ log/
 # coverage
 *.html
 *.out
+
+# macOS
+.DS_Store
