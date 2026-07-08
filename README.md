@@ -65,9 +65,20 @@ You just click on `Start`, and MM will take care of moving your mouse whenever i
 
 ### Install from source
 
-Make sure you have `go` installed. Once that is done, clone this repo and run `Make`, it should create the `mm.app` and open the folder where it was built for you. Copy the .app to your `Applications` folder like any other application.
+Make sure you have `go` installed. Once that is done, clone this repo and run `make`, it should create the `mm.app` and open the folder where it was built for you. Copy the .app to your `Applications` folder like any other application — or just run `make install` to build and drop it into `/Applications` in one step.
 
 Double click on the app, and the cute `mouse` should appear on your taskbar on top of your screen. Once you click on `Start`, you might encounter an initial `Access request` which I've discussed in the next section. If not, then you are all set!
+
+#### Keeping the Accessibility permission across rebuilds
+
+By default the app is only *ad-hoc* signed, whose identity changes on every rebuild, so macOS re-asks for the Accessibility permission each time you rebuild. To avoid that, create a stable local code-signing identity once:
+
+```bash
+make codesign-setup   # creates a self-signed "MM Local Codesign" identity in your login keychain
+make install          # builds, signs with it, installs to /Applications
+```
+
+After granting Accessibility to `mm` once, the permission now survives future `make install` rebuilds (the signature pins a constant designated requirement). The identity is self-signed and local; nothing secret is committed to the repo.
 
 ## Granting access for moving the mouse cursor
 
