@@ -26,7 +26,7 @@ type AppSettings struct {
 // version is overridden at build time via -ldflags "-X main.version=...".
 var version = "1.3.0"
 
-var configPath = configdir.LocalConfig("amm")
+var configPath = configdir.LocalConfig("mm")
 var configFile = filepath.Join(configPath, "settings.json")
 
 func main() {
@@ -104,10 +104,10 @@ func onReady() {
 		applyIcon(settings.Icon)
 		cfg := configFromSettings(settings)
 
-		about := systray.AddMenuItem("About AMM", "Information about the app")
+		about := systray.AddMenuItem("About MM", "Information about the app")
 		systray.AddSeparator()
-		ammStart := systray.AddMenuItem("Start", "start the app")
-		ammStop := systray.AddMenuItem("Stop", "stop the app")
+		mmStart := systray.AddMenuItem("Start", "start the app")
+		mmStop := systray.AddMenuItem("Stop", "stop the app")
 
 		icons := systray.AddMenuItem("Icons", "icon of the app")
 		mouse := icons.AddSubMenuItem("Mouse", "Mouse icon")
@@ -119,14 +119,14 @@ func onReady() {
 		geometric := icons.AddSubMenuItem("Geometric", "Geometric")
 		geometric.SetIcon(icon.GeometricIcon)
 
-		ammStop.Disable()
+		mmStop.Disable()
 		systray.AddSeparator()
 		mQuit := systray.AddMenuItem("Quit", "Quit the whole app")
 
 		mouseMover := mousemover.GetInstance()
 		mouseMover.Start(cfg)
-		ammStart.Disable()
-		ammStop.Enable()
+		mmStart.Disable()
+		mmStop.Enable()
 
 		chooseIcon := func(name string) {
 			settings.Icon = name
@@ -136,16 +136,16 @@ func onReady() {
 
 		for {
 			select {
-			case <-ammStart.ClickedCh:
+			case <-mmStart.ClickedCh:
 				log.Infof("starting the app")
 				mouseMover.Start(cfg)
-				ammStart.Disable()
-				ammStop.Enable()
+				mmStart.Disable()
+				mmStop.Enable()
 
-			case <-ammStop.ClickedCh:
+			case <-mmStop.ClickedCh:
 				log.Infof("stopping the app")
-				ammStart.Enable()
-				ammStop.Disable()
+				mmStart.Enable()
+				mmStop.Disable()
 				mouseMover.Quit()
 
 			case <-mQuit.ClickedCh:
@@ -163,7 +163,7 @@ func onReady() {
 				chooseIcon("geometric")
 			case <-about.ClickedCh:
 				log.Infof("Requesting about")
-				robotgo.Alert("Automatic-mouse-mover app v"+version, "Originally developed by Prashant Gupta. \n\nMore info at: https://github.com/Obrams/mouse-mover", "OK", "")
+				robotgo.Alert("Mouse-mover (MM) app v"+version, "Originally developed by Prashant Gupta. \n\nMore info at: https://github.com/Obrams/mouse-mover", "OK", "")
 			}
 		}
 	}()

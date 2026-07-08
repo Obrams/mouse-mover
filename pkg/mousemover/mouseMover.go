@@ -20,7 +20,7 @@ const (
 	//worst-case retry budget of a move+click sequence.
 	actionTimeout = 2 * time.Second
 	logDir        = "log"
-	logFileName   = "logFile-amm-5"
+	logFileName   = "logFile-mm-5"
 )
 
 // Start the main app with the given configuration. Zero/invalid config fields

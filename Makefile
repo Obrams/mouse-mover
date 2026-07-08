@@ -7,11 +7,11 @@ VERSION ?= $(shell git describe --tags --always 2>/dev/null || echo dev)
 all: open
 
 build: clean
-	mkdir -p -v ./bin/amm.app/Contents/Resources
-	mkdir -p -v ./bin/amm.app/Contents/MacOS
-	cp ./appInfo/*.plist ./bin/amm.app/Contents/Info.plist
-	cp ./appInfo/*.icns ./bin/amm.app/Contents/Resources/icon.icns
-	go build -ldflags "-X main.version=$(VERSION)" -o ./bin/amm.app/Contents/MacOS/amm cmd/main.go
+	mkdir -p -v ./bin/mm.app/Contents/Resources
+	mkdir -p -v ./bin/mm.app/Contents/MacOS
+	cp ./appInfo/*.plist ./bin/mm.app/Contents/Info.plist
+	cp ./appInfo/*.icns ./bin/mm.app/Contents/Resources/icon.icns
+	go build -ldflags "-X main.version=$(VERSION)" -o ./bin/mm.app/Contents/MacOS/mm cmd/main.go
 
 open: build
 	open ./bin

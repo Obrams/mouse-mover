@@ -1,5 +1,5 @@
 
-# Automatic-Mouse-Mover (AMM)
+# Mouse-Mover (MM)
 
 > Personal standalone build based on [prashantgupta24/automatic-mouse-mover](https://github.com/prashantgupta24/automatic-mouse-mover) (MIT). This copy adds reliability fixes, configurable behaviour via `settings.json`, an optional verified stable click, and updated dependencies so it builds on recent macOS. Maintained independently for local use.
 
@@ -47,7 +47,7 @@ Since this app actively keeps your machine awake, your messaging app will never 
 
 ## Demo
 
-You just click on `Start`, and AMM will take care of moving your mouse whenever it feels that the system has been left idle for a minute. It's as simple as this.
+You just click on `Start`, and MM will take care of moving your mouse whenever it feels that the system has been left idle for a minute. It's as simple as this.
 
 ![](https://github.com/Obrams/mouse-mover/blob/master/resources/amm-demo.gif)
 
@@ -55,7 +55,7 @@ You just click on `Start`, and AMM will take care of moving your mouse whenever 
 
 ### Install from binary
 
-1. Download the latest `amm.app.zip` from the [releases](https://github.com/Obrams/mouse-mover/releases) page, unzip it, and copy the .app to your `Applications` folder like any other application.
+1. Download the latest `mm.app.zip` from the [releases](https://github.com/Obrams/mouse-mover/releases) page, unzip it, and copy the .app to your `Applications` folder like any other application.
 
 1. Since the application is not notarized, you will need to right click on the .app and choose Open.
 
@@ -65,7 +65,7 @@ You just click on `Start`, and AMM will take care of moving your mouse whenever 
 
 ### Install from source
 
-Make sure you have `go` installed. Once that is done, clone this repo and run `Make`, it should create the `amm.app` and open the folder where it was built for you. Copy the .app to your `Applications` folder like any other application.
+Make sure you have `go` installed. Once that is done, clone this repo and run `Make`, it should create the `mm.app` and open the folder where it was built for you. Copy the .app to your `Applications` folder like any other application.
 
 Double click on the app, and the cute `mouse` should appear on your taskbar on top of your screen. Once you click on `Start`, you might encounter an initial `Access request` which I've discussed in the next section. If not, then you are all set!
 
@@ -79,19 +79,19 @@ Don't worry, it's nothing sinister, it's just that Mac doesn't allow apps to gai
 
 In order to resolve this error you need to:
 
-> Go to System Preferences -> Security & Privacy -> Privacy -> Accessibility and allow the `amm` app to gain access.
+> Go to System Preferences -> Security & Privacy -> Privacy -> Accessibility and allow the `mm` app to gain access.
 
 If you still see the error, try to quit and start the app again (the age-old way of fixing everything).
 
 ## How it works
 
-Every 60 seconds, AMM uses [Activity tracker](https://github.com/prashantgupta24/activity-tracker) to track the various changes that happened in your system during that time, like cursor movement, mouse clicks, screen changes etc. Whenever `AMM` detects a change in the system, it knows that the system is busy and will not do anything. If not, it moves the mouse cursor ever so slightly, enough to keep your Mac awake for eternity.
+Every 60 seconds, MM uses [Activity tracker](https://github.com/prashantgupta24/activity-tracker) to track the various changes that happened in your system during that time, like cursor movement, mouse clicks, screen changes etc. Whenever `MM` detects a change in the system, it knows that the system is busy and will not do anything. If not, it moves the mouse cursor ever so slightly, enough to keep your Mac awake for eternity.
 
 > All code is public and open-sourced so no worrying if there's nefarious intention involved in recording your activity or not.
 
 ## Configuration
 
-AMM works out of the box with sensible defaults, but you can tune its behaviour by editing `settings.json` (created automatically on first run at `~/Library/Application Support/amm/settings.json`). Unknown or omitted fields fall back to their defaults.
+MM works out of the box with sensible defaults, but you can tune its behaviour by editing `settings.json` (created automatically on first run at `~/Library/Application Support/mm/settings.json`). Unknown or omitted fields fall back to their defaults.
 
 | Field          | Type   | Default  | Meaning                                                                                 |
 | -------------- | ------ | -------- | --------------------------------------------------------------------------------------- |
@@ -115,6 +115,6 @@ Example that nudges the mouse after 30s of idle and also clicks:
 
 ### About the click
 
-The click is **reliable by design**: before every click AMM runs a separate verification step that confirms the OS is actually accepting its synthetic input (the same permission gate that governs mouse movement). It only reports success when a click was issued against a verified-working input pipeline, and it retries the whole sequence a few times to ride out transient failures.
+The click is **reliable by design**: before every click MM runs a separate verification step that confirms the OS is actually accepting its synthetic input (the same permission gate that governs mouse movement). It only reports success when a click was issued against a verified-working input pipeline, and it retries the whole sequence a few times to ride out transient failures.
 
 > ⚠️ A synthetic click acts on whatever is under the cursor, so it can trigger UI (buttons, links, etc.). That's why `clickEnabled` is **off by default** — turn it on only if a plain move isn't enough to keep you marked "active".

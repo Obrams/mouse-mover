@@ -15,7 +15,7 @@ The libary can be installed using:
 
 Usage
 
-Clone this repo and run Make, it should create the amm.app and open the folder where
+Clone this repo and run Make, it should create the mm.app and open the folder where
 it was built for you. You just have to drag and drop it to the Applications folder on your mac.
 
 Refer to the README for more details.
